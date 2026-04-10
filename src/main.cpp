@@ -11,6 +11,7 @@
 #include <QUrl>
 #include <QTimer>
 #include <QPainter>
+#include <QScreen>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -61,8 +62,8 @@ public:
 
         setLayout(mainLayout);
 
-        // Opaque dark background for the container
-        setStyleSheet("SlateApp { background-color: #0e0e14; }");
+        // Dark background
+        setStyleSheet("background-color: #0e0e14;");
 
         // --- Persistence ---
         QString dbDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -103,6 +104,23 @@ public:
     }
 
 protected:
+    // When Win+D natively minimizes us, Qt marks the window as Minimized and STOPS rendering.
+    // If our native Win32 timer brings the window back, Qt still thinks it's minimized!
+    // We MUST intercept the state change and tell Qt it's no longer minimized.
+    void changeEvent(QEvent* event) override
+    {
+        if (event->type() == QEvent::WindowStateChange) {
+            if (windowState() & Qt::WindowMinimized) {
+                // Instantly tell Qt we are NOT minimized
+                QTimer::singleShot(50, this, [this]() {
+                    setWindowState(windowState() & ~Qt::WindowMinimized);
+                    show(); // force a re-render
+                });
+            }
+        }
+        QWidget::changeEvent(event);
+    }
+
     // Handle scene events for drawing/text tools
     bool eventFilter(QObject* obj, QEvent* event) override
     {
@@ -233,7 +251,16 @@ protected:
 
         if (m_isDragging) {
             QPoint delta = event->globalPosition().toPoint() - m_dragStartPos;
-            move(m_dragStartGeometry.topLeft() + delta);
+            QPoint newPos = m_dragStartGeometry.topLeft() + delta;
+
+            // Clamp to screen bounds so widget stays fully visible
+            QRect screen = QApplication::primaryScreen()->geometry();
+            int maxX = screen.width() - width();
+            int maxY = screen.height() - height();
+            newPos.setX(qBound(0, newPos.x(), maxX));
+            newPos.setY(qBound(0, newPos.y(), maxY));
+
+            move(newPos);
             event->accept();
             return;
         }
@@ -285,23 +312,7 @@ protected:
         QWidget::keyPressEvent(event);
     }
 
-    // Paint the resize border
-    // Block minimize via Win32 messages
-    bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override
-    {
-#ifdef Q_OS_WIN
-        MSG* msg = static_cast<MSG*>(message);
-        if (msg->message == WM_SYSCOMMAND) {
-            // Block minimize and close from system menu
-            WPARAM cmd = msg->wParam & 0xFFF0;
-            if (cmd == SC_MINIMIZE) {
-                *result = 0;
-                return true;  // Block it
-            }
-        }
-#endif
-        return QWidget::nativeEvent(eventType, message, result);
-    }
+
 
     void paintEvent(QPaintEvent* event) override
     {
@@ -410,33 +421,70 @@ private:
 // =============================================================
 //  Entry Point
 // =============================================================
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QAction>
+#include <QStyle>
+
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     app.setApplicationName("Slate");
     app.setOrganizationName("Slate");
 
-    // --- Desktop Embedding ---
+    // Don't quit when the last window is hidden (we live in the tray)
+    app.setQuitOnLastWindowClosed(false);
+
+    // --- Widget Setup ---
     DesktopEmbedder embedder;
 
-    // Create the main widget
     SlateApp slate(&embedder);
     slate.resize(900, 600);
-
-    // Show the window first so it gets a valid HWND
     slate.show();
 
-    // Attempt to embed into the desktop layer (at icon level)
-    bool embedded = embedder.embed(slate.winId());
-    if (!embedded) {
-        qWarning() << "[Slate] Desktop embedding failed — running as floating window";
-        slate.setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnBottomHint);
-        slate.show();
-    }
+    // Apply widget behavior: hide from taskbar + start anti-minimize timer
+    embedder.embed(slate.winId());
 
-    qDebug() << "[Slate] Running. Press Escape to quit.";
-    qDebug() << "[Slate] Right-click drag to move. Drag edges to resize.";
+    // --- System Tray Icon ---
+    QSystemTrayIcon trayIcon;
+    trayIcon.setIcon(app.style()->standardIcon(QStyle::SP_DesktopIcon));
+    trayIcon.setToolTip("Slate — Desktop Canvas Widget");
+
+    QMenu trayMenu;
+
+    QAction* toggleAction = trayMenu.addAction("Disable Widget");
+    QObject::connect(toggleAction, &QAction::triggered, [&]() {
+        if (embedder.isWidgetEnabled()) {
+            embedder.setWidgetEnabled(false);
+            toggleAction->setText("Enable Widget");
+            trayIcon.showMessage("Slate", "Widget disabled. Right-click tray icon to re-enable.",
+                                 QSystemTrayIcon::Information, 2000);
+        } else {
+            embedder.setWidgetEnabled(true);
+            toggleAction->setText("Disable Widget");
+        }
+    });
+
+    trayMenu.addSeparator();
+
+    QAction* quitAction = trayMenu.addAction("Quit Slate");
+    QObject::connect(quitAction, &QAction::triggered, &app, &QApplication::quit);
+
+    trayIcon.setContextMenu(&trayMenu);
+    trayIcon.show();
+
+    // Double-click tray icon to toggle
+    QObject::connect(&trayIcon, &QSystemTrayIcon::activated,
+                     [&](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::DoubleClick) {
+            toggleAction->trigger();
+        }
+    });
+
+    qDebug() << "[Slate] Widget running. Use system tray icon to control.";
+    qDebug() << "[Slate] Right-click drag to move. Drag edges to resize. Ctrl+Q to quit.";
     return app.exec();
 }
 
 #include "main.moc"
+

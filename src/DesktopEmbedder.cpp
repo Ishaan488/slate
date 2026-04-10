@@ -8,121 +8,110 @@ DesktopEmbedder::DesktopEmbedder(QObject* parent)
 
 #ifdef Q_OS_WIN
 
-static HWND g_foundWorkerW = nullptr;
-
-static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM /* lParam */)
-{
-    HWND shellDefView = FindWindowExW(hwnd, nullptr, L"SHELLDLL_DefView", nullptr);
-    if (shellDefView) {
-        // The WorkerW we need is the NEXT sibling after the window
-        // that contains SHELLDLL_DefView
-        g_foundWorkerW = FindWindowExW(nullptr, hwnd, L"WorkerW", nullptr);
-        return FALSE;  // Stop enumerating
-    }
-    return TRUE;
-}
-
-HWND DesktopEmbedder::findWorkerW()
-{
-    // Step 1: Find the Program Manager window
-    HWND hProgman = FindWindowW(L"Progman", nullptr);
-    if (!hProgman) {
-        qWarning() << "[DesktopEmbedder] Could not find Progman window";
-        return nullptr;
-    }
-
-    // Step 2: Send the undocumented message to spawn WorkerW
-    SendMessageTimeoutW(
-        hProgman,
-        0x052C,
-        0xD,
-        0x1,
-        SMTO_NORMAL,
-        1000,
-        nullptr
-    );
-
-    // Step 3: Find the WorkerW behind SHELLDLL_DefView
-    g_foundWorkerW = nullptr;
-    EnumWindows(EnumWindowsCallback, 0);
-
-    if (!g_foundWorkerW) {
-        qWarning() << "[DesktopEmbedder] Could not find WorkerW";
-    }
-
-    return g_foundWorkerW;
-}
+#include <dwmapi.h>
 
 bool DesktopEmbedder::embed(WId windowHandle)
 {
-    HWND hwnd = reinterpret_cast<HWND>(windowHandle);
+    m_hwnd = reinterpret_cast<HWND>(windowHandle);
 
-    m_workerW = findWorkerW();
-    if (!m_workerW) {
-        qWarning() << "[DesktopEmbedder] Failed — running as normal window";
-        return false;
-    }
+    // --- NO EMBEDDING ---
+    // Instead of parenting into WorkerW (which makes us subject to
+    // Win+D hiding the parent), we stay as a standalone top-level window.
 
-    // Reparent into the WorkerW (desktop layer)
-    SetParent(hwnd, m_workerW);
+    // Hide from taskbar and Alt-Tab
+    LONG exStyle = GetWindowLong(m_hwnd, GWL_EXSTYLE);
+    exStyle |= WS_EX_TOOLWINDOW;
+    exStyle &= ~WS_EX_APPWINDOW;
+    SetWindowLong(m_hwnd, GWL_EXSTYLE, exStyle);
 
-    // Set child window styles
-    LONG style = GetWindowLong(hwnd, GWL_STYLE);
-    style &= ~WS_POPUP;
-    style |= WS_CHILD | WS_VISIBLE;
-    SetWindowLong(hwnd, GWL_STYLE, style);
+    // Remove minimize/maximize capability
+    LONG style = GetWindowLong(m_hwnd, GWL_STYLE);
+    style &= ~(WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+    SetWindowLong(m_hwnd, GWL_STYLE, style);
 
-    // Clean extended styles
-    LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-    exStyle &= ~(WS_EX_TOOLWINDOW | WS_EX_APPWINDOW);
-    SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+    // Apply style changes
+    SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                 SWP_FRAMECHANGED | SWP_SHOWWINDOW);
 
-    // Get desktop size to center the widget
-    RECT desktopRect;
-    GetClientRect(m_workerW, &desktopRect);
+    // --- THE KEY: Aggressive restore timer ---
+    // Win+D will minimize us (we can't prevent that).
+    // But we detect it within 100ms and IMMEDIATELY restore.
+    // The widget pops back so fast that it appears to never have left.
+    m_visTimer = new QTimer(this);
+    connect(m_visTimer, &QTimer::timeout, this, [this]() {
+        if (!m_hwnd || !m_enabled) return;
 
-    int width = 900;
-    int height = 600;
-    int x = (desktopRect.right - width) / 2;
-    int y = (desktopRect.bottom - height) / 2;
+        bool needsRestore = false;
 
-    SetWindowPos(hwnd, HWND_TOP, x, y, width, height,
-                 SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+        // 1. Minimized natively?
+        if (IsIconic(m_hwnd)) needsRestore = true;
 
-    // Force repaint
-    ShowWindow(hwnd, SW_SHOW);
-    UpdateWindow(hwnd);
+        // 2. Hidden natively?
+        if (!IsWindowVisible(m_hwnd)) needsRestore = true;
+
+        // 3. Cloaked by DWM?
+        BOOL cloaked = FALSE;
+        DwmGetWindowAttribute(m_hwnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
+        if (cloaked) needsRestore = true;
+
+        if (needsRestore) {
+            ShowWindow(m_hwnd, SW_RESTORE);
+            ShowWindow(m_hwnd, SW_SHOWNOACTIVATE);
+        }
+
+        // Win+D reorganizes the Z-order. Repeatedly pin it to the absolute bottom 
+        // (but above the desktop).
+        SetWindowPos(m_hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    });
+    m_visTimer->start(100);
 
     m_embedded = true;
-    qDebug() << "[DesktopEmbedder] Embedded into desktop at"
-             << x << y << width << "x" << height;
+    m_enabled = true;
+    qDebug() << "[Slate] Desktop widget active (standalone mode, 100ms restore)";
     return true;
+}
+
+void DesktopEmbedder::setWidgetEnabled(bool enabled)
+{
+    if (m_enabled == enabled) return;
+    m_enabled = enabled;
+    if (!m_hwnd) return;
+
+    if (enabled) {
+        ShowWindow(m_hwnd, SW_SHOWNOACTIVATE);
+        if (m_visTimer) m_visTimer->start(100);
+    } else {
+        if (m_visTimer) m_visTimer->stop();
+        ShowWindow(m_hwnd, SW_HIDE);
+    }
+    emit enabledChanged(enabled);
 }
 
 void DesktopEmbedder::detach(WId windowHandle)
 {
     if (!m_embedded) return;
+    if (m_visTimer) { m_visTimer->stop(); delete m_visTimer; m_visTimer = nullptr; }
 
     HWND hwnd = reinterpret_cast<HWND>(windowHandle);
-    SetParent(hwnd, nullptr);
+
+    // Restore normal styles
+    LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+    exStyle &= ~WS_EX_TOOLWINDOW;
+    exStyle |= WS_EX_APPWINDOW;
+    SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
 
     LONG style = GetWindowLong(hwnd, GWL_STYLE);
-    style &= ~WS_CHILD;
-    style |= WS_POPUP;
+    style |= WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
     SetWindowLong(hwnd, GWL_STYLE, style);
 
     m_embedded = false;
-    qDebug() << "[DesktopEmbedder] Detached";
-}
-
-bool DesktopEmbedder::reattach(WId windowHandle)
-{
-    detach(windowHandle);
-    return embed(windowHandle);
+    m_hwnd = nullptr;
 }
 
 #else
 bool DesktopEmbedder::embed(WId) { return false; }
 void DesktopEmbedder::detach(WId) {}
-bool DesktopEmbedder::reattach(WId) { return false; }
+void DesktopEmbedder::setWidgetEnabled(bool) {}
 #endif
