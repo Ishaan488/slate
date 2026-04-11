@@ -12,7 +12,7 @@
 class FreehandLineItem : public QGraphicsPathItem {
 public:
     FreehandLineItem(const QPointF& startPoint,
-                     const QColor& color = QColor(200, 200, 255),
+                     const QColor& color = QColor(200, 200, 200),
                      qreal width = 2.5,
                      QGraphicsItem* parent = nullptr);
 
@@ -23,6 +23,7 @@ public:
 
     void addPoint(const QPointF& point);
     void finishStroke();
+    void setTargetRect(const QRectF& rect);
 
     // ID for persistence
     void setItemId(const QString& id) { m_id = id; }

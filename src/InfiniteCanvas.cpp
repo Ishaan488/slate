@@ -12,6 +12,7 @@
 #include "items/ImageDropItem.h"
 #include "items/TextNoteItem.h"
 #include "items/ShapeItem.h"
+#include "items/FreehandLineItem.h"
 #include "items/SelectionOverlay.h"
 
 InfiniteCanvas::InfiniteCanvas(QWidget* parent)
@@ -76,7 +77,8 @@ void InfiniteCanvas::onSelectionChanged()
         auto* item = items.first();
         if (item->type() == ShapeItem::Type || 
             item->type() == TextNoteItem::Type || 
-            item->type() == ImageDropItem::Type) 
+            item->type() == ImageDropItem::Type ||
+            item->type() == FreehandLineItem::Type) 
         {
             m_selectionOverlay->attachTo(item);
             return;

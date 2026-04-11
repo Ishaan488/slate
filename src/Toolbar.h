@@ -72,7 +72,7 @@ private:
 
     Tool m_currentTool = Select;
     ShapeType m_currentShape = Square;
-    QColor m_currentColor{200, 200, 255};
+    QColor m_currentColor{200, 200, 200};
     qreal m_penWidth = 2.5;
 
     // Layouts

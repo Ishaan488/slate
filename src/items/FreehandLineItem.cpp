@@ -74,3 +74,31 @@ void FreehandLineItem::rebuildPath()
 
     setPath(path);
 }
+
+void FreehandLineItem::setTargetRect(const QRectF& newRect)
+{
+    if (m_points.isEmpty()) return;
+
+    QRectF oldPathBounds = path().boundingRect();
+    if (oldPathBounds.width() <= 0.1 || oldPathBounds.height() <= 0.1) return;
+
+    // overlay gives full bounds including pen stroke. Extract math path bounds:
+    qreal padding = m_width / 2.0;
+    QRectF newPathBounds = newRect.adjusted(padding, padding, -padding, -padding);
+
+    // Guard against inversion/collapse
+    if (newPathBounds.width() < 1.0) newPathBounds.setWidth(1.0);
+    if (newPathBounds.height() < 1.0) newPathBounds.setHeight(1.0);
+
+    qreal sx = newPathBounds.width() / oldPathBounds.width();
+    qreal sy = newPathBounds.height() / oldPathBounds.height();
+
+    for (int i = 0; i < m_points.size(); ++i) {
+        qreal nx = newPathBounds.left() + (m_points[i].x() - oldPathBounds.left()) * sx;
+        qreal ny = newPathBounds.top() + (m_points[i].y() - oldPathBounds.top()) * sy;
+        m_points[i] = QPointF(nx, ny);
+    }
+
+    prepareGeometryChange();
+    rebuildPath();
+}

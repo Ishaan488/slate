@@ -2,6 +2,7 @@
 #include "ShapeItem.h"
 #include "TextNoteItem.h"
 #include "ImageDropItem.h"
+#include "FreehandLineItem.h"
 
 #include <QPainter>
 #include <QGraphicsSceneHoverEvent>
@@ -131,6 +132,11 @@ void SelectionOverlay::mousePressEvent(QGraphicsSceneMouseEvent* event)
     if (m_activeHandle != None) {
         m_dragStartPos = event->pos();
         m_dragStartBounds = m_bounds;
+        if (auto text = dynamic_cast<TextNoteItem*>(m_target)) {
+            m_dragStartFontSize = text->font().pointSizeF();
+            if (m_dragStartFontSize <= 0) m_dragStartFontSize = 11.0;
+            m_dragStartTextWidth = text->textWidth();
+        }
         event->accept();
     } else {
         event->ignore(); // pass through to item for dragging
@@ -198,15 +204,30 @@ void SelectionOverlay::applyResize(const QRectF& newRect)
         shape->setRect(newRect);
     } 
     else if (auto text = dynamic_cast<TextNoteItem*>(m_target)) {
-        // Only allow width resizing for text to ensure natural wrapping.
-        // Also text starts at (0,0) in local coords normally, but if setRect is used we must shift transform.
-        // Wait! TextNoteItem bounding box originates from internal formatting. We should just set its width.
-        text->setTextWidth(newRect.width());
+        bool isCorner = (m_activeHandle == TopLeft || m_activeHandle == TopRight || 
+                         m_activeHandle == BottomLeft || m_activeHandle == BottomRight);
+
+        if (isCorner) {
+            // Scale font size dynamically based on height resize ratio
+            qreal ratio = newRect.height() / m_dragStartBounds.height();
+            qreal newSize = m_dragStartFontSize * ratio;
+            if (newSize < 4.0) newSize = 4.0; // Enforce minimum visual font size
+
+            QFont f = text->font();
+            f.setPointSizeF(newSize);
+            text->setFont(f);
+
+            // Proportional formatting to match new font size exactly so words don't wrap differently
+            if (m_dragStartTextWidth > 0) {
+                text->setTextWidth(m_dragStartTextWidth * ratio);
+            }
+        } else {
+            // Apply dynamic width formatting (word wrapping) without changing font size
+            text->setTextWidth(newRect.width());
+        }
         
-        // If left edge moved, we actually need to shift the object's pos() to compensate!
-        // To keep it simple, for Text, resizing Left means pos shifts right.
+        // If left edge moved, shift the object's pos() to compensate
         if (m_activeHandle == TopLeft || m_activeHandle == LeftCenter || m_activeHandle == BottomLeft) {
-            // we shift position to simulate left-edge drag
             QPointF shift = m_target->mapToScene(QPointF(newRect.left() - m_bounds.left(), 0));
             QPointF origin = m_target->mapToScene(QPointF(0,0));
             m_target->setPos(m_target->pos() + (shift - origin));
@@ -214,5 +235,8 @@ void SelectionOverlay::applyResize(const QRectF& newRect)
     }
     else if (auto img = dynamic_cast<ImageDropItem*>(m_target)) {
         img->setTargetRect(newRect);
+    }
+    else if (auto freehand = dynamic_cast<FreehandLineItem*>(m_target)) {
+        freehand->setTargetRect(newRect);
     }
 }

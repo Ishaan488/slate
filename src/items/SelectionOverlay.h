@@ -46,6 +46,8 @@ private:
     HandleIndex m_activeHandle = None;
     QPointF m_dragStartPos;
     QRectF m_dragStartBounds;
+    qreal m_dragStartFontSize = 11.0;
+    qreal m_dragStartTextWidth = -1.0;
 
     qreal m_handleSize = 8.0;
 };
