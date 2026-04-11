@@ -14,6 +14,7 @@
 #include <QDateTime>
 #include <QStandardPaths>
 #include <QDir>
+#include <QFont>
 
 CanvasStore::CanvasStore(const QString& dbPath, QObject* parent)
     : QObject(parent)
@@ -136,6 +137,14 @@ void CanvasStore::saveItem(TextNoteItem* item)
     // We store html for rich-text format persistence, and text for legacy
     data["html"] = item->toHtml();
     data["text"] = item->toPlainText();
+
+    // Persist explicitly modified external formatting rules
+    QFont f = item->font();
+    data["font_family"] = f.family();
+    data["font_size"] = f.pointSize();
+    data["font_bold"] = f.bold();
+    data["font_italic"] = f.italic();
+    data["color"] = item->defaultTextColor().name();
 
     QSqlQuery q(m_db);
     q.prepare(R"(
@@ -286,6 +295,16 @@ void CanvasStore::restoreItems(QGraphicsScene* scene)
             } else {
                 item->setPlainText(data["text"].toString());
             }
+
+            if (data.contains("font_family")) {
+                QFont f;
+                f.setFamily(data["font_family"].toString());
+                f.setPointSize(data["font_size"].toInt());
+                f.setBold(data["font_bold"].toBool());
+                f.setItalic(data["font_italic"].toBool());
+                item->setFont(f);
+                item->setDefaultTextColor(QColor(data["color"].toString()));
+            }
             item->setItemId(id);
             item->setPos(x, y);
             item->setScale(itemScale);
@@ -326,7 +345,7 @@ void CanvasStore::restoreItems(QGraphicsScene* scene)
     qDebug() << "[CanvasStore] Restored" << count << "items";
 }
 
-void CanvasStore::saveViewState(const QPointF& center, double zoom)
+void CanvasStore::saveViewState(const QPointF& center, double zoom, const QColor& canvasColor)
 {
     QSqlQuery q(m_db);
 
@@ -341,9 +360,15 @@ void CanvasStore::saveViewState(const QPointF& center, double zoom)
     q.prepare("INSERT OR REPLACE INTO canvas_state (key, value) VALUES ('view_zoom', ?)");
     q.addBindValue(QString::number(zoom, 'f', 4));
     q.exec();
+
+    if (canvasColor.isValid()) {
+        q.prepare("INSERT OR REPLACE INTO canvas_state (key, value) VALUES ('canvas_color', ?)");
+        q.addBindValue(canvasColor.name());
+        q.exec();
+    }
 }
 
-void CanvasStore::restoreViewState(QPointF& center, double& zoom)
+void CanvasStore::restoreViewState(QPointF& center, double& zoom, QColor& canvasColor)
 {
     QSqlQuery q(m_db);
 
@@ -355,6 +380,11 @@ void CanvasStore::restoreViewState(QPointF& center, double& zoom)
 
     q.exec("SELECT value FROM canvas_state WHERE key = 'view_zoom'");
     zoom = q.next() ? q.value(0).toDouble() : 1.0;
+
+    q.exec("SELECT value FROM canvas_state WHERE key = 'canvas_color'");
+    if (q.next()) {
+        canvasColor = QColor(q.value(0).toString());
+    }
 
     center = QPointF(vx, vy);
 }

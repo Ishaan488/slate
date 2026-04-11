@@ -5,6 +5,7 @@
 #include <QGraphicsScene>
 #include <QPointF>
 #include <QTimer>
+#include <QColor>
 
 class FreehandLineItem;
 class TextNoteItem;
@@ -25,6 +26,8 @@ public:
 
     bool initialize();
 
+    QSqlDatabase& database() { return m_db; }
+
     // Save individual items
     void saveItem(FreehandLineItem* item);
     void saveItem(TextNoteItem* item);
@@ -41,8 +44,8 @@ public:
     void restoreItems(QGraphicsScene* scene);
 
     // View state
-    void saveViewState(const QPointF& center, double zoom);
-    void restoreViewState(QPointF& center, double& zoom);
+    void saveViewState(const QPointF& center, double zoom, const QColor& canvasColor = QColor());
+    void restoreViewState(QPointF& center, double& zoom, QColor& canvasColor);
 
     // Generate unique IDs
     static QString newId();

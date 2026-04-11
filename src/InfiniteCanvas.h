@@ -24,6 +24,7 @@ public:
         m_bgColor = color;
         scene()->invalidate(scene()->sceneRect(), QGraphicsScene::BackgroundLayer);
     }
+    QColor canvasColor() const { return m_bgColor; }
 
 signals:
     void itemModified();   // Emitted when any item is moved/changed

@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QDebug>
+#include <QSqlQuery>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QUrl>
@@ -108,9 +109,13 @@ public:
             // Restore view position/zoom
             QPointF center;
             double zoom;
-            m_store->restoreViewState(center, zoom);
+            QColor canvasColor;
+            m_store->restoreViewState(center, zoom, canvasColor);
             if (zoom > 0) {
                 m_canvas->restoreViewState(center, zoom);
+            }
+            if (canvasColor.isValid()) {
+                m_canvas->setCanvasColor(canvasColor);
             }
         }
 
@@ -121,6 +126,9 @@ public:
         // Auto-save on any modification
         connect(m_canvas, &InfiniteCanvas::itemModified, this, &SlateApp::saveAll);
         connect(m_store, &CanvasStore::saveTriggered, this, &SlateApp::saveAll);
+
+        // Reliable save on application quit (fires before any destruction)
+        connect(qApp, &QApplication::aboutToQuit, this, &SlateApp::saveAll);
 
         // Install event filter on the scene for tool interactions
         m_canvas->scene()->installEventFilter(this);
@@ -419,23 +427,33 @@ private slots:
 
     void saveAll()
     {
+        if (!m_store || !m_canvas || !m_canvas->scene()) return;
+
         auto* scene = m_canvas->scene();
 
-        // Save view state
-        m_store->saveViewState(m_canvas->viewCenter(), m_canvas->currentZoom());
+        // Save view state (including canvas background color)
+        m_store->saveViewState(m_canvas->viewCenter(), m_canvas->currentZoom(), m_canvas->canvasColor());
+
+        // Wipe old items, then re-insert only what's still on the scene
+        {
+            QSqlQuery q(m_store->database());
+            q.exec("DELETE FROM canvas_items");
+        }
 
         // Save each item
+        int count = 0;
         for (auto* item : scene->items()) {
             if (auto* freehand = dynamic_cast<FreehandLineItem*>(item)) {
-                m_store->saveItem(freehand);
+                m_store->saveItem(freehand); ++count;
             } else if (auto* text = dynamic_cast<TextNoteItem*>(item)) {
-                m_store->saveItem(text);
+                m_store->saveItem(text); ++count;
             } else if (auto* img = dynamic_cast<ImageDropItem*>(item)) {
-                m_store->saveItem(img);
+                m_store->saveItem(img); ++count;
             } else if (auto* shape = dynamic_cast<ShapeItem*>(item)) {
-                m_store->saveItem(shape);
+                m_store->saveItem(shape); ++count;
             }
         }
+        qDebug() << "[Slate] Saved" << count << "items to database";
     }
 
 private:
