@@ -15,7 +15,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QFont>
-
+#include <QColorDialog>
 CanvasStore::CanvasStore(const QString& dbPath, QObject* parent)
     : QObject(parent)
     , m_dbPath(dbPath)
@@ -366,6 +366,15 @@ void CanvasStore::saveViewState(const QPointF& center, double zoom, const QColor
         q.addBindValue(canvasColor.name());
         q.exec();
     }
+
+    // Save QColorDialog custom colors (up to 16 slots usually)
+    QJsonArray customColors;
+    for (int i = 0; i < QColorDialog::customCount(); ++i) {
+        customColors.append(QColorDialog::customColor(i).name(QColor::HexArgb));
+    }
+    q.prepare("INSERT OR REPLACE INTO canvas_state (key, value) VALUES ('custom_colors', ?)");
+    q.addBindValue(QJsonDocument(customColors).toJson(QJsonDocument::Compact));
+    q.exec();
 }
 
 void CanvasStore::restoreViewState(QPointF& center, double& zoom, QColor& canvasColor)
@@ -384,6 +393,17 @@ void CanvasStore::restoreViewState(QPointF& center, double& zoom, QColor& canvas
     q.exec("SELECT value FROM canvas_state WHERE key = 'canvas_color'");
     if (q.next()) {
         canvasColor = QColor(q.value(0).toString());
+    }
+
+    q.exec("SELECT value FROM canvas_state WHERE key = 'custom_colors'");
+    if (q.next()) {
+        QJsonDocument doc = QJsonDocument::fromJson(q.value(0).toByteArray());
+        if (doc.isArray()) {
+            QJsonArray arr = doc.array();
+            for (int i = 0; i < arr.size() && i < QColorDialog::customCount(); ++i) {
+                QColorDialog::setCustomColor(i, QColor(arr[i].toString()));
+            }
+        }
     }
 
     center = QPointF(vx, vy);
