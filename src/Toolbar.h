@@ -40,6 +40,12 @@ signals:
     void penWidthChanged(qreal width);
     void clearAllRequested();
     void canvasColorRequested(const QColor& color);
+    
+    // Text formatting
+    void textBoldToggled(bool active);
+    void textItalicToggled(bool active);
+    void textFontSizeChanged(int delta);
+    void textColorRequested(const QColor& color);
 
 public slots:
     void onSelectClicked();

@@ -54,6 +54,29 @@ public:
             m_canvas->setCanvasColor(color);
         });
 
+        // Text formatting
+        auto applyToTextNodes = [this](auto func) {
+            for (auto* item : m_canvas->scene()->selectedItems()) {
+                if (auto* textItem = dynamic_cast<TextNoteItem*>(item)) {
+                    func(textItem);
+                }
+            }
+            saveAll();
+        };
+
+        connect(m_toolbar, &Toolbar::textBoldToggled, this, [=](bool active) {
+            applyToTextNodes([=](TextNoteItem* t) { t->setBold(active); });
+        });
+        connect(m_toolbar, &Toolbar::textItalicToggled, this, [=](bool active) {
+            applyToTextNodes([=](TextNoteItem* t) { t->setItalic(active); });
+        });
+        connect(m_toolbar, &Toolbar::textFontSizeChanged, this, [=](int delta) {
+            applyToTextNodes([=](TextNoteItem* t) { t->increaseFontSize(delta * 2); });
+        });
+        connect(m_toolbar, &Toolbar::textColorRequested, this, [=](const QColor& color) {
+            applyToTextNodes([=](TextNoteItem* t) { t->setTextColor(color); });
+        });
+
         // --- Layout: toolbar pinned to bottom center ---
         auto* mainLayout = new QVBoxLayout(this);
         mainLayout->setContentsMargins(kResizeMargin, kResizeMargin,

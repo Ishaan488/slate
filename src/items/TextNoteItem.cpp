@@ -28,6 +28,37 @@ TextNoteItem::TextNoteItem(const QString& text, QGraphicsItem* parent)
     setGraphicsEffect(shadow);
 }
 
+void TextNoteItem::setBold(bool bold)
+{
+    QFont f = font();
+    f.setBold(bold);
+    setFont(f);
+    update();
+}
+
+void TextNoteItem::setItalic(bool italic)
+{
+    QFont f = font();
+    f.setItalic(italic);
+    setFont(f);
+    update();
+}
+
+void TextNoteItem::increaseFontSize(int delta)
+{
+    QFont f = font();
+    int newSize = qMax(6, f.pointSize() + delta);
+    f.setPointSize(newSize);
+    setFont(f);
+    update();
+}
+
+void TextNoteItem::setTextColor(const QColor& color)
+{
+    setDefaultTextColor(color);
+    update();
+}
+
 QRectF TextNoteItem::boundingRect() const
 {
     QRectF textRect = QGraphicsTextItem::boundingRect();

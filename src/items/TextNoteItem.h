@@ -26,6 +26,12 @@ public:
 
     bool isEditing() const { return m_editing; }
 
+    // Text Formatting
+    void setBold(bool bold);
+    void setItalic(bool italic);
+    void increaseFontSize(int delta);
+    void setTextColor(const QColor& color);
+
 signals:
     void editFinished();
 

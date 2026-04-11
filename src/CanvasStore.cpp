@@ -133,6 +133,8 @@ void CanvasStore::saveItem(TextNoteItem* item)
     }
 
     QJsonObject data;
+    // We store html for rich-text format persistence, and text for legacy
+    data["html"] = item->toHtml();
     data["text"] = item->toPlainText();
 
     QSqlQuery q(m_db);
@@ -278,7 +280,12 @@ void CanvasStore::restoreItems(QGraphicsScene* scene)
             ++count;
 
         } else if (type == "text") {
-            auto* item = new TextNoteItem(data["text"].toString());
+            auto* item = new TextNoteItem();
+            if (data.contains("html")) {
+                item->setHtml(data["html"].toString());
+            } else {
+                item->setPlainText(data["text"].toString());
+            }
             item->setItemId(id);
             item->setPos(x, y);
             item->setScale(itemScale);

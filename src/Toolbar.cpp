@@ -236,6 +236,52 @@ void Toolbar::updateSubMenu()
         m_subLayout->addWidget(createColorDot(QColor(26, 35, 51), "Blueprint Blue"));
         connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
 
+    } else if (m_currentTool == Text) {
+        m_subMenuWidget->show();
+        
+        auto* boldBtn = createIconButton("B", "Bold (Ctrl+B)");
+        boldBtn->setStyleSheet("QPushButton { min-width: 24px; font-weight: bold; border-radius: 4px; padding: 4px 8px; }");
+        boldBtn->setCheckable(true);
+        connect(boldBtn, &QPushButton::toggled, this, &Toolbar::textBoldToggled);
+
+        auto* italicBtn = createIconButton("I", "Italic (Ctrl+I)");
+        italicBtn->setStyleSheet("QPushButton { min-width: 24px; font-style: italic; border-radius: 4px; padding: 4px 8px; }");
+        italicBtn->setCheckable(true);
+        connect(italicBtn, &QPushButton::toggled, this, &Toolbar::textItalicToggled);
+
+        auto* smallerBtn = createIconButton("T-", "Decrease Font Size");
+        smallerBtn->setCheckable(false);
+        connect(smallerBtn, &QPushButton::clicked, this, [this]{ emit textFontSizeChanged(-1); });
+
+        auto* largerBtn = createIconButton("T+", "Increase Font Size");
+        largerBtn->setCheckable(false);
+        connect(largerBtn, &QPushButton::clicked, this, [this]{ emit textFontSizeChanged(1); });
+
+        m_subLayout->addWidget(boldBtn);
+        m_subLayout->addWidget(italicBtn);
+
+        auto* sep = new QWidget();
+        sep->setFixedWidth(1);
+        sep->setStyleSheet("background-color: rgba(100, 100, 130, 80);");
+        m_subLayout->addWidget(sep);
+
+        m_subLayout->addWidget(smallerBtn);
+        m_subLayout->addWidget(largerBtn);
+
+        auto* sep2 = new QWidget();
+        sep2->setFixedWidth(1);
+        sep2->setStyleSheet("background-color: rgba(100, 100, 130, 80);");
+        m_subLayout->addWidget(sep2);
+        
+        auto* textColBtn = createIconButton("A", "Pick Text Color");
+        textColBtn->setCheckable(false);
+        textColBtn->setStyleSheet("QPushButton { min-width: 24px; color: #e0e0e0; border-radius: 4px; border-bottom: 3px solid #e0e0e0; }");
+        connect(textColBtn, &QPushButton::clicked, this, [this]() {
+            QColor color = QColorDialog::getColor(Qt::white, this, "Pick Text Color");
+            if (color.isValid()) emit textColorRequested(color);
+        });
+        m_subLayout->addWidget(textColBtn);
+
     } else {
         m_subMenuWidget->hide();
     }
