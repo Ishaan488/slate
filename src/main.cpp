@@ -513,6 +513,8 @@ private:
 #include <QMenu>
 #include <QAction>
 #include <QStyle>
+#include <QSettings>
+#include <QDir>
 
 int main(int argc, char* argv[])
 {
@@ -553,6 +555,22 @@ int main(int argc, char* argv[])
         } else {
             embedder.setWidgetEnabled(true);
             toggleAction->setText("Disable Widget");
+        }
+    });
+
+    QSettings bootUpSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+    QString appPath = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+    
+    QAction* autoStartAction = trayMenu.addAction("Start with Windows");
+    autoStartAction->setCheckable(true);
+    autoStartAction->setChecked(bootUpSettings.contains("SlateWidget"));
+    
+    QObject::connect(autoStartAction, &QAction::toggled, [=](bool checked) {
+        QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
+        if (checked) {
+            settings.setValue("SlateWidget", appPath);
+        } else {
+            settings.remove("SlateWidget");
         }
     });
 
