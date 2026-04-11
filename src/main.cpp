@@ -420,9 +420,14 @@ private slots:
 
     void onClearAll()
     {
-        m_canvas->scene()->clear();
-        m_store->clearAll();
-        qDebug() << "[Slate] Canvas cleared";
+        auto selected = m_canvas->scene()->selectedItems();
+        if (selected.isEmpty()) return;
+        for (auto* item : selected) {
+            m_canvas->scene()->removeItem(item);
+            delete item;
+        }
+        saveAll();
+        qDebug() << "[Slate] Deleted" << selected.size() << "selected items";
     }
 
     void saveAll()

@@ -105,7 +105,7 @@ void Toolbar::setupUI()
 
     auto* sep2 = createSeparator();
 
-    m_clearBtn = createToolButton(QChar(0x2715), "Clear canvas");          // ✕
+    m_clearBtn = createToolButton(QChar(0x2715), "Delete selected");          // ✕
     m_clearBtn->setObjectName("clearBtn");
     connect(m_clearBtn, &QPushButton::clicked, this, &Toolbar::onClearClicked);
 
