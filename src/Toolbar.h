@@ -68,6 +68,7 @@ private:
     QPushButton* createToolButton(const QString& text, const QString& tooltip);
     QPushButton* createIconButton(const QString& text, const QString& tooltip);
     QPushButton* createColorDot(const QColor& color, const QString& tooltip);
+    QWidget* createSeparator();
 
     Tool m_currentTool = Select;
     ShapeType m_currentShape = Square;
