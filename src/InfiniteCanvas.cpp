@@ -11,6 +11,8 @@
 #include <QDebug>
 #include "items/ImageDropItem.h"
 #include "items/TextNoteItem.h"
+#include "items/ShapeItem.h"
+#include "items/SelectionOverlay.h"
 
 InfiniteCanvas::InfiniteCanvas(QWidget* parent)
     : QGraphicsView(parent)
@@ -19,6 +21,12 @@ InfiniteCanvas::InfiniteCanvas(QWidget* parent)
     // Set a very large scene rect to simulate infinite canvas
     m_scene->setSceneRect(-1e6, -1e6, 2e6, 2e6);
     setScene(m_scene);
+
+    m_selectionOverlay = new SelectionOverlay();
+    m_scene->addItem(m_selectionOverlay);
+
+    connect(m_scene, &QGraphicsScene::selectionChanged, this, &InfiniteCanvas::onSelectionChanged);
+    connect(m_selectionOverlay, &SelectionOverlay::resizeFinished, this, &InfiniteCanvas::itemModified);
 
     // Rendering quality
     setRenderHint(QPainter::Antialiasing, true);
@@ -57,6 +65,25 @@ void InfiniteCanvas::restoreViewState(const QPointF& center, double zoom)
     m_zoomFactor = zoom;
     scale(m_zoomFactor, m_zoomFactor);
     centerOn(center);
+}
+
+void InfiniteCanvas::onSelectionChanged()
+{
+    auto items = m_scene->selectedItems();
+    items.removeAll(m_selectionOverlay);
+
+    if (items.size() == 1) {
+        auto* item = items.first();
+        if (item->type() == ShapeItem::Type || 
+            item->type() == TextNoteItem::Type || 
+            item->type() == ImageDropItem::Type) 
+        {
+            m_selectionOverlay->attachTo(item);
+            return;
+        }
+    }
+    
+    m_selectionOverlay->detach();
 }
 
 // --- Zoom via scroll wheel, centered on cursor ---

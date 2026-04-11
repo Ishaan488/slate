@@ -6,6 +6,8 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 
+class SelectionOverlay;
+
 class InfiniteCanvas : public QGraphicsView {
     Q_OBJECT
 
@@ -26,6 +28,9 @@ public:
     }
     QColor canvasColor() const { return m_bgColor; }
 
+public slots:
+    void onSelectionChanged();
+
 signals:
     void itemModified();   // Emitted when any item is moved/changed
     void canvasClicked(const QPointF& scenePos);
@@ -44,6 +49,7 @@ protected:
 
 private:
     QGraphicsScene* m_scene;
+    SelectionOverlay* m_selectionOverlay;
     double m_zoomFactor = 1.0;
 
     // Pan state

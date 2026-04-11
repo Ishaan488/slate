@@ -5,7 +5,7 @@
 ImageDropItem::ImageDropItem(const QString& filePath,
                              const QPointF& scenePos,
                              QGraphicsItem* parent)
-    : QGraphicsPixmapItem(parent)
+    : QGraphicsObject(parent)
     , m_filePath(filePath)
 {
     QPixmap pix(filePath);
@@ -22,14 +22,14 @@ ImageDropItem::ImageDropItem(const QString& filePath,
                          Qt::SmoothTransformation);
     }
 
-    setPixmap(pix);
+    m_pixmap = pix;
+    m_rect = QRectF(0, 0, pix.width(), pix.height());
+
     setPos(scenePos);
 
     setFlags(QGraphicsItem::ItemIsSelectable |
              QGraphicsItem::ItemIsMovable);
 
-    // Enable smooth scaling
-    setTransformationMode(Qt::SmoothTransformation);
 
     // Drop shadow
     auto* shadow = new QGraphicsDropShadowEffect();
@@ -39,20 +39,33 @@ ImageDropItem::ImageDropItem(const QString& filePath,
     setGraphicsEffect(shadow);
 }
 
+void ImageDropItem::setTargetRect(const QRectF& rect)
+{
+    prepareGeometryChange();
+    m_rect = rect;
+    update();
+}
+
+QRectF ImageDropItem::boundingRect() const
+{
+    return m_rect;
+}
+
 void ImageDropItem::paint(QPainter* painter,
                           const QStyleOptionGraphicsItem* option,
                           QWidget* widget)
 {
     painter->setRenderHint(QPainter::Antialiasing);
+    painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
     // Draw rounded clip for the image
-    QRectF imgRect = boundingRect();
+    QRectF imgRect = m_rect;
     QPainterPath clip;
     clip.addRoundedRect(imgRect, 6, 6);
     painter->setClipPath(clip);
 
     // Draw the pixmap
-    QGraphicsPixmapItem::paint(painter, option, widget);
+    painter->drawPixmap(imgRect, m_pixmap, m_pixmap.rect());
     painter->setClipping(false);
 
     // Selection border

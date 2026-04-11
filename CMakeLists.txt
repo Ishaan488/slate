@@ -23,6 +23,7 @@ set(SOURCES
     src/items/TextNoteItem.cpp
     src/items/ImageDropItem.cpp
     src/items/ShapeItem.cpp
+    src/items/SelectionOverlay.cpp
     resources.qrc
 )
 
@@ -35,6 +36,7 @@ set(HEADERS
     src/items/TextNoteItem.h
     src/items/ImageDropItem.h
     src/items/ShapeItem.h
+    src/items/SelectionOverlay.h
 )
 
 # Build as a Windows GUI app (no console window)

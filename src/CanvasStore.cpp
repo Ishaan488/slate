@@ -145,6 +145,7 @@ void CanvasStore::saveItem(TextNoteItem* item)
     data["font_bold"] = f.bold();
     data["font_italic"] = f.italic();
     data["color"] = item->defaultTextColor().name();
+    data["textWidth"] = item->textWidth();
 
     QSqlQuery q(m_db);
     q.prepare(R"(
@@ -173,6 +174,12 @@ void CanvasStore::saveItem(ImageDropItem* item)
 
     QJsonObject data;
     data["filePath"] = item->filePath();
+    
+    QRectF r = item->boundingRect();
+    data["rect_x"] = r.x();
+    data["rect_y"] = r.y();
+    data["rect_w"] = r.width();
+    data["rect_h"] = r.height();
 
     QSqlQuery q(m_db);
     q.prepare(R"(
@@ -305,6 +312,10 @@ void CanvasStore::restoreItems(QGraphicsScene* scene)
                 item->setFont(f);
                 item->setDefaultTextColor(QColor(data["color"].toString()));
             }
+            if (data.contains("textWidth")) {
+                qreal w = data["textWidth"].toDouble();
+                if (w > 0) item->setTextWidth(w);
+            }
             item->setItemId(id);
             item->setPos(x, y);
             item->setScale(itemScale);
@@ -316,6 +327,11 @@ void CanvasStore::restoreItems(QGraphicsScene* scene)
         } else if (type == "image") {
             QString filePath = data["filePath"].toString();
             auto* item = new ImageDropItem(filePath, QPointF(x, y));
+            if (data.contains("rect_w")) {
+                QRectF rect(data["rect_x"].toDouble(), data["rect_y"].toDouble(),
+                            data["rect_w"].toDouble(), data["rect_h"].toDouble());
+                item->setTargetRect(rect);
+            }
             item->setItemId(id);
             item->setScale(itemScale);
             item->setZValue(zIndex);
