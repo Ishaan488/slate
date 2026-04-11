@@ -533,9 +533,12 @@ int main(int argc, char* argv[])
     // Apply widget behavior: hide from taskbar + start anti-minimize timer
     embedder.embed(slate.winId());
 
+    QIcon appIcon(":/logo.png");
+    app.setWindowIcon(appIcon);
+
     // --- System Tray Icon ---
     QSystemTrayIcon trayIcon;
-    trayIcon.setIcon(app.style()->standardIcon(QStyle::SP_DesktopIcon));
+    trayIcon.setIcon(appIcon);
     trayIcon.setToolTip("Slate — Desktop Canvas Widget");
 
     QMenu trayMenu;
