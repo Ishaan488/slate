@@ -47,10 +47,7 @@ public:
 
         // --- Toolbar ---
         m_toolbar = new Toolbar(this);
-        connect(m_toolbar, &Toolbar::clearAllRequested, this, [this]() {
-            m_canvas->scene()->clear();
-            saveAll();
-        });
+
         connect(m_toolbar, &Toolbar::canvasColorRequested, this, [this](const QColor& color) {
             m_canvas->setCanvasColor(color);
         });
