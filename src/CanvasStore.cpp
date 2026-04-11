@@ -2,6 +2,7 @@
 #include "items/FreehandLineItem.h"
 #include "items/TextNoteItem.h"
 #include "items/ImageDropItem.h"
+#include "items/ShapeItem.h"
 
 #include <QSqlQuery>
 #include <QSqlError>
@@ -181,6 +182,42 @@ void CanvasStore::saveItem(ImageDropItem* item)
     }
 }
 
+void CanvasStore::saveItem(ShapeItem* item)
+{
+    if (item->itemId().isEmpty()) {
+        item->setItemId(newId());
+    }
+
+    QJsonObject data;
+    data["shapeClass"] = static_cast<int>(item->shapeClass());
+    data["color"] = item->color().name(QColor::HexArgb);
+    data["width"] = item->penWidth();
+    
+    QRectF r = item->rect();
+    data["rect_x"] = r.x();
+    data["rect_y"] = r.y();
+    data["rect_w"] = r.width();
+    data["rect_h"] = r.height();
+
+    QSqlQuery q(m_db);
+    q.prepare(R"(
+        INSERT OR REPLACE INTO canvas_items
+        (id, type, x, y, scale, z_index, rotation, data, created_at, updated_at)
+        VALUES (?, 'shape', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    )");
+    q.addBindValue(item->itemId());
+    q.addBindValue(item->pos().x());
+    q.addBindValue(item->pos().y());
+    q.addBindValue(item->scale());
+    q.addBindValue(static_cast<int>(item->zValue()));
+    q.addBindValue(item->rotation());
+    q.addBindValue(QJsonDocument(data).toJson(QJsonDocument::Compact));
+
+    if (!q.exec()) {
+        qWarning() << "[CanvasStore] Failed to save shape item:" << q.lastError().text();
+    }
+}
+
 void CanvasStore::deleteItem(const QString& itemId)
 {
     QSqlQuery q(m_db);
@@ -254,6 +291,23 @@ void CanvasStore::restoreItems(QGraphicsScene* scene)
             QString filePath = data["filePath"].toString();
             auto* item = new ImageDropItem(filePath, QPointF(x, y));
             item->setItemId(id);
+            item->setScale(itemScale);
+            item->setZValue(zIndex);
+            item->setRotation(rotation);
+            scene->addItem(item);
+            ++count;
+
+        } else if (type == "shape") {
+            ShapeItem::ShapeClass sClass = static_cast<ShapeItem::ShapeClass>(data["shapeClass"].toInt());
+            QColor color(data["color"].toString());
+            qreal width = data["width"].toDouble();
+            QRectF rect(data["rect_x"].toDouble(), data["rect_y"].toDouble(),
+                        data["rect_w"].toDouble(), data["rect_h"].toDouble());
+            
+            auto* item = new ShapeItem(sClass, color, width);
+            item->setRect(rect);
+            item->setItemId(id);
+            item->setPos(x, y);
             item->setScale(itemScale);
             item->setZValue(zIndex);
             item->setRotation(rotation);

@@ -10,6 +10,7 @@
 #include <QUrl>
 #include <QDebug>
 #include "items/ImageDropItem.h"
+#include "items/TextNoteItem.h"
 
 InfiniteCanvas::InfiniteCanvas(QWidget* parent)
     : QGraphicsView(parent)
@@ -149,12 +150,18 @@ void InfiniteCanvas::keyPressEvent(QKeyEvent* event)
 
     // Delete selected items
     if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace) {
-        auto selected = m_scene->selectedItems();
-        for (auto* item : selected) {
-            m_scene->removeItem(item);
-            delete item;
+        auto* focusItem = m_scene->focusItem();
+        bool isEditingText = focusItem && focusItem->type() == TextNoteItem::Type 
+                             && static_cast<TextNoteItem*>(focusItem)->isEditing();
+        
+        if (!isEditingText) {
+            auto selected = m_scene->selectedItems();
+            for (auto* item : selected) {
+                m_scene->removeItem(item);
+                delete item;
+            }
+            emit itemModified();
         }
-        emit itemModified();
     }
 
     // Reset zoom with Ctrl+0
@@ -173,8 +180,8 @@ void InfiniteCanvas::keyPressEvent(QKeyEvent* event)
 // --- Draw a subtle dot grid as background ---
 void InfiniteCanvas::drawBackground(QPainter* painter, const QRectF& rect)
 {
-    // Fill with solid opaque dark background
-    painter->fillRect(rect, QColor(20, 20, 26));
+    // Fill with current reactive background color
+    painter->fillRect(rect, m_bgColor);
 
     // Calculate grid spacing based on zoom
     double gridSize = kGridSize;

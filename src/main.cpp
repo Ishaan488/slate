@@ -23,6 +23,7 @@
 #include "CanvasStore.h"
 #include "items/FreehandLineItem.h"
 #include "items/TextNoteItem.h"
+#include "items/ShapeItem.h"
 #include "items/ImageDropItem.h"
 
 /**
@@ -45,6 +46,13 @@ public:
 
         // --- Toolbar ---
         m_toolbar = new Toolbar(this);
+        connect(m_toolbar, &Toolbar::clearAllRequested, this, [this]() {
+            m_canvas->scene()->clear();
+            saveAll();
+        });
+        connect(m_toolbar, &Toolbar::canvasColorRequested, this, [this](const QColor& color) {
+            m_canvas->setCanvasColor(color);
+        });
 
         // --- Layout: toolbar pinned to bottom center ---
         auto* mainLayout = new QVBoxLayout(this);
@@ -158,6 +166,19 @@ protected:
                 return true;
             }
 
+            if (m_toolbar->currentTool() == Toolbar::Shapes) {
+                // Determine ShapeClass from Toolbar
+                ShapeItem::ShapeClass sClass = ShapeItem::Square;
+                if (m_toolbar->currentShape() == Toolbar::Circle) sClass = ShapeItem::Circle;
+                if (m_toolbar->currentShape() == Toolbar::Triangle) sClass = ShapeItem::Triangle;
+
+                m_shapeStartPos = me->scenePos();
+                m_activeShape = new ShapeItem(sClass, m_toolbar->currentColor(), m_toolbar->currentPenWidth());
+                m_activeShape->setRect(QRectF(m_shapeStartPos, QSizeF(0, 0)));
+                scene->addItem(m_activeShape);
+                return true;
+            }
+
             break;
         }
 
@@ -168,6 +189,13 @@ protected:
                 m_activeStroke->addPoint(me->scenePos());
                 return true;
             }
+
+            if (m_activeShape) {
+                // Build rectangle from start to current
+                QRectF rect(m_shapeStartPos, me->scenePos());
+                m_activeShape->setRect(rect.normalized());
+                return true;
+            }
             break;
         }
 
@@ -175,6 +203,13 @@ protected:
             if (m_activeStroke) {
                 m_activeStroke->finishStroke();
                 m_activeStroke = nullptr;
+                saveAll();
+                return true;
+            }
+
+            if (m_activeShape) {
+                // Finalize
+                m_activeShape = nullptr;
                 saveAll();
                 return true;
             }
@@ -341,6 +376,10 @@ private slots:
             m_canvas->setCursor(Qt::CrossCursor);
             m_canvas->setDragMode(QGraphicsView::NoDrag);
             break;
+        case Toolbar::Shapes:
+            m_canvas->setCursor(Qt::CrossCursor);
+            m_canvas->setDragMode(QGraphicsView::NoDrag);
+            break;
         case Toolbar::Text:
             m_canvas->setCursor(Qt::IBeamCursor);
             m_canvas->setDragMode(QGraphicsView::NoDrag);
@@ -370,6 +409,8 @@ private slots:
                 m_store->saveItem(text);
             } else if (auto* img = dynamic_cast<ImageDropItem*>(item)) {
                 m_store->saveItem(img);
+            } else if (auto* shape = dynamic_cast<ShapeItem*>(item)) {
+                m_store->saveItem(shape);
             }
         }
     }
@@ -413,6 +454,10 @@ private:
     Edge m_resizeEdge = Edge::None;
     QPoint m_dragStartPos;
     QRect m_dragStartGeometry;
+
+    // Active components
+    ShapeItem* m_activeShape = nullptr;
+    QPointF m_shapeStartPos;
 
     static constexpr int kResizeMargin = 6;
 };

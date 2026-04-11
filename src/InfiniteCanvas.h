@@ -20,6 +20,11 @@ public:
     QPointF viewCenter() const;
     void restoreViewState(const QPointF& center, double zoom);
 
+    void setCanvasColor(const QColor& color) {
+        m_bgColor = color;
+        scene()->invalidate(scene()->sceneRect(), QGraphicsScene::BackgroundLayer);
+    }
+
 signals:
     void itemModified();   // Emitted when any item is moved/changed
     void canvasClicked(const QPointF& scenePos);
@@ -50,4 +55,6 @@ private:
 
     // Grid
     static constexpr double kGridSize = 40.0;
+
+    QColor m_bgColor{20, 20, 26};
 };

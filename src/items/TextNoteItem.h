@@ -24,6 +24,8 @@ public:
     enum { Type = UserType + 2 };
     int type() const override { return Type; }
 
+    bool isEditing() const { return m_editing; }
+
 signals:
     void editFinished();
 

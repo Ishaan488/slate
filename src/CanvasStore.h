@@ -9,6 +9,7 @@
 class FreehandLineItem;
 class TextNoteItem;
 class ImageDropItem;
+class ShapeItem;
 
 /**
  * CanvasStore — SQLite persistence layer.
@@ -28,6 +29,7 @@ public:
     void saveItem(FreehandLineItem* item);
     void saveItem(TextNoteItem* item);
     void saveItem(ImageDropItem* item);
+    void saveItem(ShapeItem* item);
 
     // Delete
     void deleteItem(const QString& itemId);

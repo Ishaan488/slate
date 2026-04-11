@@ -21,6 +21,7 @@ set(SOURCES
     src/items/FreehandLineItem.cpp
     src/items/TextNoteItem.cpp
     src/items/ImageDropItem.cpp
+    src/items/ShapeItem.cpp
 )
 
 set(HEADERS
@@ -31,6 +32,7 @@ set(HEADERS
     src/items/FreehandLineItem.h
     src/items/TextNoteItem.h
     src/items/ImageDropItem.h
+    src/items/ShapeItem.h
 )
 
 # Build as a Windows GUI app (no console window)

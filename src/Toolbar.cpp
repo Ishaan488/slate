@@ -1,6 +1,7 @@
 #include "Toolbar.h"
 #include <QColorDialog>
 #include <QGraphicsDropShadowEffect>
+#include <QLabel>
 
 Toolbar::Toolbar(QWidget* parent)
     : QWidget(parent)
@@ -13,9 +14,17 @@ void Toolbar::setupUI()
     // Semi-transparent dark background
     setStyleSheet(R"(
         Toolbar {
+            background-color: transparent;
+        }
+        QWidget#mainToolbar {
             background-color: rgba(25, 25, 35, 200);
             border-radius: 10px;
             border: 1px solid rgba(100, 100, 130, 80);
+        }
+        QWidget#subMenu {
+            background-color: rgba(30, 30, 42, 180);
+            border-radius: 8px;
+            border: 1px solid rgba(80, 80, 110, 60);
         }
         QPushButton {
             background-color: rgba(50, 50, 70, 180);
@@ -26,7 +35,7 @@ void Toolbar::setupUI()
             font-family: "Segoe UI";
             font-size: 11px;
             font-weight: 500;
-            min-width: 50px;
+            min-width: 40px;
         }
         QPushButton:hover {
             background-color: rgba(70, 70, 100, 200);
@@ -46,7 +55,26 @@ void Toolbar::setupUI()
         }
     )");
 
-    auto* layout = new QHBoxLayout(this);
+    m_mainLayout = new QVBoxLayout(this);
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
+    m_mainLayout->setSpacing(6);
+    m_mainLayout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+
+    // --- Sub Menu ---
+    m_subMenuWidget = new QWidget(this);
+    m_subMenuWidget->setObjectName("subMenu");
+    m_subLayout = new QHBoxLayout(m_subMenuWidget);
+    m_subLayout->setContentsMargins(6, 4, 6, 4);
+    m_subLayout->setSpacing(4);
+    
+    // We will populate subLayout dynamically based on current tool
+    updateSubMenu();
+    m_mainLayout->addWidget(m_subMenuWidget, 0, Qt::AlignHCenter);
+
+    // --- Primary Toolbar ---
+    auto* mainToolbar = new QWidget(this);
+    mainToolbar->setObjectName("mainToolbar");
+    auto* layout = new QHBoxLayout(mainToolbar);
     layout->setContentsMargins(8, 6, 8, 6);
     layout->setSpacing(4);
 
@@ -58,6 +86,10 @@ void Toolbar::setupUI()
     m_drawBtn = createToolButton("Draw", "Freehand draw (D)");
     m_drawBtn->setCheckable(true);
     connect(m_drawBtn, &QPushButton::clicked, this, &Toolbar::onDrawClicked);
+
+    m_shapesBtn = createToolButton("Shapes", "Draw geometric shapes (S)");
+    m_shapesBtn->setCheckable(true);
+    connect(m_shapesBtn, &QPushButton::clicked, this, &Toolbar::onShapesClicked);
 
     m_textBtn = createToolButton("Text", "Add text note (T)");
     m_textBtn->setCheckable(true);
@@ -75,21 +107,24 @@ void Toolbar::setupUI()
 
     layout->addWidget(m_selectBtn);
     layout->addWidget(m_drawBtn);
+    layout->addWidget(m_shapesBtn);
     layout->addWidget(m_textBtn);
     layout->addSpacing(6);
     layout->addWidget(m_colorBtn);
     layout->addSpacing(6);
     layout->addWidget(m_clearBtn);
 
-    setLayout(layout);
-    setFixedHeight(42);
+    m_mainLayout->addWidget(mainToolbar, 0, Qt::AlignHCenter);
 
-    // Drop shadow on the toolbar itself
+    // Drop shadow on the primary toolbar
     auto* shadow = new QGraphicsDropShadowEffect(this);
     shadow->setBlurRadius(25);
     shadow->setOffset(0, 4);
     shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    mainToolbar->setGraphicsEffect(shadow);
+    
+    // Initial size constraints
+    setFixedHeight(100);
 }
 
 QPushButton* Toolbar::createToolButton(const QString& text, const QString& tooltip)
@@ -100,11 +135,137 @@ QPushButton* Toolbar::createToolButton(const QString& text, const QString& toolt
     return btn;
 }
 
+QPushButton* Toolbar::createIconButton(const QString& text, const QString& tooltip)
+{
+    auto* btn = new QPushButton(text, this);
+    btn->setToolTip(tooltip);
+    btn->setCursor(Qt::PointingHandCursor);
+    btn->setCheckable(true);
+    btn->setStyleSheet("QPushButton { min-width: 30px; border-radius: 4px; padding: 4px 8px; }");
+    return btn;
+}
+
+QPushButton* Toolbar::createColorDot(const QColor& color, const QString& tooltip)
+{
+    auto* btn = new QPushButton("●", this);
+    btn->setToolTip(tooltip);
+    btn->setCursor(Qt::PointingHandCursor);
+    btn->setStyleSheet(QString("QPushButton { background: transparent; border: none; color: %1; font-size: 18px; min-width: 24px; padding: 0px; } "
+                               "QPushButton:hover { color: #ffffff; }").arg(color.name()));
+    return btn;
+}
+
 void Toolbar::updateButtonStates()
 {
     m_selectBtn->setChecked(m_currentTool == Select);
     m_drawBtn->setChecked(m_currentTool == Draw);
+    m_shapesBtn->setChecked(m_currentTool == Shapes);
     m_textBtn->setChecked(m_currentTool == Text);
+    
+    updateSubMenu();
+}
+
+void Toolbar::updateSubMenu()
+{
+    // Clear current sub-menu items
+    QLayoutItem* item;
+    while ((item = m_subLayout->takeAt(0)) != nullptr) {
+        if (QWidget* widget = item->widget()) {
+            widget->deleteLater();
+        }
+        delete item;
+    }
+
+    if (m_currentTool == Draw || m_currentTool == Shapes) {
+        m_subMenuWidget->show();
+
+        if (m_currentTool == Shapes) {
+            auto* sqBtn = createIconButton("■", "Square");
+            sqBtn->setChecked(m_currentShape == Square);
+            connect(sqBtn, &QPushButton::clicked, this, [this]{ setShape(Square); });
+
+            auto* circBtn = createIconButton("●", "Circle");
+            circBtn->setChecked(m_currentShape == Circle);
+            connect(circBtn, &QPushButton::clicked, this, [this]{ setShape(Circle); });
+
+            auto* triBtn = createIconButton("▲", "Triangle");
+            triBtn->setChecked(m_currentShape == Triangle);
+            connect(triBtn, &QPushButton::clicked, this, [this]{ setShape(Triangle); });
+
+            m_subLayout->addWidget(sqBtn);
+            m_subLayout->addWidget(circBtn);
+            m_subLayout->addWidget(triBtn);
+            
+            // Add a separator
+            auto* sep = new QWidget();
+            sep->setFixedWidth(1);
+            sep->setStyleSheet("background-color: rgba(100, 100, 130, 80);");
+            m_subLayout->addWidget(sep);
+        }
+
+        auto* thinBtn = createIconButton("─", "Thin Stroke");
+        thinBtn->setChecked(qFuzzyCompare(m_penWidth, 1.0));
+        connect(thinBtn, &QPushButton::clicked, this, [this]{ setPenWidth(1.0); });
+
+        auto* medBtn = createIconButton("▬", "Medium Stroke");
+        medBtn->setChecked(qFuzzyCompare(m_penWidth, 3.0));
+        connect(medBtn, &QPushButton::clicked, this, [this]{ setPenWidth(3.0); });
+
+        auto* thickBtn = createIconButton("█", "Thick Stroke");
+        thickBtn->setChecked(qFuzzyCompare(m_penWidth, 6.0));
+        connect(thickBtn, &QPushButton::clicked, this, [this]{ setPenWidth(6.0); });
+
+        m_subLayout->addWidget(thinBtn);
+        m_subLayout->addWidget(medBtn);
+        m_subLayout->addWidget(thickBtn);
+        
+    } else if (m_currentTool == Select) {
+        m_subMenuWidget->show();
+        
+        auto* label = new QLabel("Canvas:");
+        label->setStyleSheet("color: #a0a0b0; font-size: 10px; padding: 0 4px;");
+        m_subLayout->addWidget(label);
+        
+        // Background color options
+        m_subLayout->addWidget(createColorDot(QColor(14, 14, 20), "Dark Slate"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+        
+        m_subLayout->addWidget(createColorDot(QColor(31, 32, 41), "Soft Charcoal"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+
+        m_subLayout->addWidget(createColorDot(QColor(26, 35, 51), "Blueprint Blue"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+
+    } else {
+        m_subMenuWidget->hide();
+    }
+}
+
+void Toolbar::setPenWidth(qreal width)
+{
+    m_penWidth = width;
+    updateSubMenu(); // Update checked states
+    emit penWidthChanged(m_penWidth);
+}
+
+void Toolbar::setShape(ShapeType shape)
+{
+    m_currentShape = shape;
+    updateSubMenu(); // Update checked states
+}
+
+void Toolbar::requestCanvasColor()
+{
+    // Retrieve color from sender's property/stylesheet context
+    if (QPushButton* btn = qobject_cast<QPushButton*>(sender())) {
+        // Simple extraction since we know the shape of the stylesheet
+        QString ss = btn->styleSheet();
+        int idx = ss.indexOf("color: #");
+        if (idx != -1) {
+            QString hex = ss.mid(idx + 7, 7);
+            emit canvasColorRequested(QColor(hex));
+        }
+    }
 }
 
 void Toolbar::onSelectClicked()
@@ -117,6 +278,13 @@ void Toolbar::onSelectClicked()
 void Toolbar::onDrawClicked()
 {
     m_currentTool = Draw;
+    updateButtonStates();
+    emit toolChanged(m_currentTool);
+}
+
+void Toolbar::onShapesClicked()
+{
+    m_currentTool = Shapes;
     updateButtonStates();
     emit toolChanged(m_currentTool);
 }
