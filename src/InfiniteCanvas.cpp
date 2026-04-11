@@ -177,43 +177,11 @@ void InfiniteCanvas::keyPressEvent(QKeyEvent* event)
     QGraphicsView::keyPressEvent(event);
 }
 
-// --- Draw a subtle dot grid as background ---
+// --- Draw background ---
 void InfiniteCanvas::drawBackground(QPainter* painter, const QRectF& rect)
 {
     // Fill with current reactive background color
     painter->fillRect(rect, m_bgColor);
-
-    // Calculate grid spacing based on zoom
-    double gridSize = kGridSize;
-
-    // Don't draw grid if zoomed out too far (performance)
-    if (m_zoomFactor < 0.15) return;
-
-    // Adjust opacity based on zoom
-    int alpha = qBound(30, static_cast<int>(60 * m_zoomFactor), 80);
-    QPen dotPen(QColor(255, 255, 255, alpha));
-    dotPen.setWidth(1);
-    dotPen.setCosmetic(true);  // Constant size regardless of zoom
-    painter->setPen(dotPen);
-
-    // Calculate visible area bounds snapped to grid
-    double left = qFloor(rect.left() / gridSize) * gridSize;
-    double top = qFloor(rect.top() / gridSize) * gridSize;
-    double right = rect.right();
-    double bottom = rect.bottom();
-
-    // Draw dots
-    QVector<QPointF> dots;
-    for (double x = left; x <= right; x += gridSize) {
-        for (double y = top; y <= bottom; y += gridSize) {
-            dots.append(QPointF(x, y));
-        }
-
-        // Safety: limit dots per frame
-        if (dots.size() > 50000) break;
-    }
-
-    painter->drawPoints(dots.data(), dots.size());
 }
 
 // --- Image drag and drop ---
