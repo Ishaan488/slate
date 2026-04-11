@@ -236,6 +236,18 @@ void Toolbar::updateSubMenu()
         m_subLayout->addWidget(createColorDot(QColor(26, 35, 51), "Blueprint Blue"));
         connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
 
+        m_subLayout->addWidget(createColorDot(QColor(30, 36, 30), "Dark Moss"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+
+        m_subLayout->addWidget(createColorDot(QColor(23, 18, 43), "Deep Indigo"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+
+        m_subLayout->addWidget(createColorDot(QColor(245, 245, 250), "Soft White"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+
+        m_subLayout->addWidget(createColorDot(QColor(252, 248, 242), "Warm Cream"));
+        connect(m_subLayout->itemAt(m_subLayout->count()-1)->widget(), SIGNAL(clicked()), this, SLOT(requestCanvasColor()));
+
     } else if (m_currentTool == Text) {
         m_subMenuWidget->show();
         
