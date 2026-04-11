@@ -17,14 +17,14 @@ void Toolbar::setupUI()
             background-color: transparent;
         }
         QWidget#mainToolbar {
-            background-color: rgba(22, 22, 30, 230);
+            background-color: rgba(18, 18, 18, 235);
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 8);
+            border: 1px solid rgba(255, 255, 255, 6);
         }
         QWidget#subMenu {
-            background-color: rgba(22, 22, 30, 220);
+            background-color: rgba(18, 18, 18, 225);
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 8);
+            border: 1px solid rgba(255, 255, 255, 6);
         }
         QPushButton {
             background-color: transparent;
@@ -233,13 +233,13 @@ void Toolbar::updateSubMenu()
         // Canvas background presets as colored dots
         struct Preset { QColor color; QString name; };
         const Preset presets[] = {
-            { QColor(14, 14, 20),   "Dark Slate"    },
-            { QColor(31, 32, 41),   "Soft Charcoal" },
-            { QColor(26, 35, 51),   "Blueprint Blue" },
-            { QColor(30, 36, 30),   "Dark Moss"     },
-            { QColor(23, 18, 43),   "Deep Indigo"   },
-            { QColor(245,245,250),  "Soft White"    },
-            { QColor(252,248,242),  "Warm Cream"    },
+            { QColor(13, 13, 13),   "Midnight"      },
+            { QColor(28, 28, 28),   "Charcoal"      },
+            { QColor(22, 30, 42),   "Blueprint"     },
+            { QColor(24, 32, 24),   "Forest"        },
+            { QColor(26, 20, 38),   "Indigo"        },
+            { QColor(242,242,242),  "Soft White"    },
+            { QColor(250,246,238),  "Warm Cream"    },
         };
 
         for (const auto& p : presets) {

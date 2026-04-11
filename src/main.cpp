@@ -95,7 +95,7 @@ public:
         setLayout(mainLayout);
 
         // Dark background
-        setStyleSheet("background-color: #0e0e14;");
+        setStyleSheet("background-color: #0d0d0d;");
 
         // --- Persistence ---
         QString dbDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);

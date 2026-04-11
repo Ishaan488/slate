@@ -57,5 +57,5 @@ private:
     // Grid
     static constexpr double kGridSize = 40.0;
 
-    QColor m_bgColor{20, 20, 26};
+    QColor m_bgColor{13, 13, 13};
 };

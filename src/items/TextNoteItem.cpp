@@ -75,7 +75,7 @@ void TextNoteItem::paint(QPainter* painter,
     QRectF bg = boundingRect();
 
     // Background fill
-    QColor bgColor = m_editing ? QColor(50, 50, 65, 220) : QColor(35, 35, 50, 200);
+    QColor bgColor = m_editing ? QColor(40, 40, 40, 220) : QColor(28, 28, 28, 200);
     painter->setPen(Qt::NoPen);
     painter->setBrush(bgColor);
     painter->drawRoundedRect(bg, kCornerRadius, kCornerRadius);

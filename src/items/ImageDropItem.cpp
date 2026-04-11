@@ -12,7 +12,7 @@ ImageDropItem::ImageDropItem(const QString& filePath,
     if (pix.isNull()) {
         // Fallback: create a placeholder
         pix = QPixmap(200, 150);
-        pix.fill(QColor(60, 60, 80));
+        pix.fill(QColor(30, 30, 30));
     }
 
     // Scale down large images
