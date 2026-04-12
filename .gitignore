@@ -63,3 +63,8 @@ Thumbs.db
 
 idea.md
 package.bat
+github_release_notes.md
+
+# Packaging
+/dist/
+*.zip

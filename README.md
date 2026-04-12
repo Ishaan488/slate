@@ -1,6 +1,6 @@
 # Slate
 
-Slate is a persistent desktop canvas application built using C++ and Qt 6. It embeds directly into the Windows desktop layer, providing an opaque edge-to-edge drawing canvas while maintaining correct Z-order relative to desktop icons.
+Slate is a persistent desktop canvas widget built using C++ and Qt 6. It embeds directly into the Windows desktop layer, providing an opaque edge-to-edge drawing canvas while maintaining correct Z-order relative to desktop icons.
 
 ## Features
 
