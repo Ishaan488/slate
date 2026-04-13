@@ -193,6 +193,59 @@ void InfiniteCanvas::keyPressEvent(QKeyEvent* event)
         }
     }
 
+    // Duplicate selected items with Ctrl+D
+    if (event->key() == Qt::Key_D && (event->modifiers() & Qt::ControlModifier)) {
+        auto selected = m_scene->selectedItems();
+        if (!selected.isEmpty()) {
+            m_scene->clearSelection();
+            bool duplicated = false;
+
+            for (auto* item : selected) {
+                QGraphicsItem* clone = nullptr;
+
+                if (auto* text = dynamic_cast<TextNoteItem*>(item)) {
+                    auto* newText = new TextNoteItem();
+                    newText->setHtml(text->toHtml());
+                    newText->setFont(text->font());
+                    newText->setDefaultTextColor(text->defaultTextColor());
+                    if (text->textWidth() > 0) newText->setTextWidth(text->textWidth());
+                    clone = newText;
+                }
+                else if (auto* shape = dynamic_cast<ShapeItem*>(item)) {
+                    clone = new ShapeItem(shape->shapeClass(), shape->color(), shape->penWidth());
+                    static_cast<ShapeItem*>(clone)->setRect(shape->rect());
+                }
+                else if (auto* image = dynamic_cast<ImageDropItem*>(item)) {
+                    clone = new ImageDropItem(image->filePath(), QPointF(0,0));
+                    static_cast<ImageDropItem*>(clone)->setTargetRect(image->boundingRect());
+                }
+                else if (auto* freehand = dynamic_cast<FreehandLineItem*>(item)) {
+                    auto pts = freehand->points();
+                    if (!pts.isEmpty()) {
+                        auto* newFh = new FreehandLineItem(pts.first(), freehand->strokeColor(), freehand->strokeWidth());
+                        for (int i = 1; i < pts.size(); ++i) newFh->addPoint(pts[i]);
+                        newFh->finishStroke();
+                        clone = newFh;
+                    }
+                }
+
+                if (clone) {
+                    clone->setPos(item->pos() + QPointF(30, 30));
+                    clone->setScale(item->scale());
+                    clone->setRotation(item->rotation());
+                    clone->setZValue(item->zValue());
+                    clone->setSelected(true);
+                    m_scene->addItem(clone);
+                    duplicated = true;
+                }
+            }
+
+            if (duplicated) {
+                emit itemModified();
+            }
+        }
+    }
+
     // Reset zoom with Ctrl+0
     if (event->key() == Qt::Key_0 &&
         event->modifiers() & Qt::ControlModifier)
