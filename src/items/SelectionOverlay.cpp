@@ -81,6 +81,21 @@ SelectionOverlay::HandleIndex SelectionOverlay::handleAt(const QPointF& pos) con
             return static_cast<HandleIndex>(i);
         }
     }
+    
+    // Check rotation hit-zones (larger area outside the corners)
+    qreal rotZone = m_handleSize * 2.5;
+    qreal l = m_bounds.left(), r = m_bounds.right(), t = m_bounds.top(), b = m_bounds.bottom();
+
+    QRectF rotTL(l - rotZone, t - rotZone, rotZone * 2, rotZone * 2);
+    QRectF rotTR(r - rotZone, t - rotZone, rotZone * 2, rotZone * 2);
+    QRectF rotBL(l - rotZone, b - rotZone, rotZone * 2, rotZone * 2);
+    QRectF rotBR(r - rotZone, b - rotZone, rotZone * 2, rotZone * 2);
+
+    if (rotTL.contains(pos)) return RotateTopLeft;
+    if (rotTR.contains(pos)) return RotateTopRight;
+    if (rotBL.contains(pos)) return RotateBottomLeft;
+    if (rotBR.contains(pos)) return RotateBottomRight;
+
     return None;
 }
 
@@ -120,6 +135,11 @@ void SelectionOverlay::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
         case LeftCenter:
         case RightCenter:
             setCursor(Qt::SizeHorCursor); break;
+        case RotateTopLeft:
+        case RotateTopRight:
+        case RotateBottomLeft:
+        case RotateBottomRight:
+            setCursor(Qt::CrossCursor); break;
         default:
             setCursor(Qt::ArrowCursor); break;
     }
@@ -131,11 +151,22 @@ void SelectionOverlay::mousePressEvent(QGraphicsSceneMouseEvent* event)
     m_activeHandle = handleAt(event->pos());
     if (m_activeHandle != None) {
         m_dragStartPos = event->pos();
-        m_dragStartBounds = m_bounds;
-        if (auto text = dynamic_cast<TextNoteItem*>(m_target)) {
-            m_dragStartFontSize = text->font().pointSizeF();
-            if (m_dragStartFontSize <= 0) m_dragStartFontSize = 11.0;
-            m_dragStartTextWidth = text->textWidth();
+        
+        if (m_activeHandle >= RotateTopLeft && m_activeHandle <= RotateBottomLeft) {
+            m_isRotating = true;
+            m_dragStartRotation = m_target->rotation();
+            
+            m_dragStartCenterScene = m_target->mapToScene(m_bounds.center());
+            QPointF globalMousePos = event->scenePos();
+            m_dragStartAngle = std::atan2(globalMousePos.y() - m_dragStartCenterScene.y(), globalMousePos.x() - m_dragStartCenterScene.x()) * 180.0 / M_PI;
+        } else {
+            m_isRotating = false;
+            m_dragStartBounds = m_bounds;
+            if (auto text = dynamic_cast<TextNoteItem*>(m_target)) {
+                m_dragStartFontSize = text->font().pointSizeF();
+                if (m_dragStartFontSize <= 0) m_dragStartFontSize = 11.0;
+                m_dragStartTextWidth = text->textWidth();
+            }
         }
         event->accept();
     } else {
@@ -147,6 +178,25 @@ void SelectionOverlay::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     if (m_activeHandle == None) {
         event->ignore();
+        return;
+    }
+
+    if (m_isRotating) {
+        QPointF globalMousePos = event->scenePos();
+        
+        qreal currentAngle = std::atan2(globalMousePos.y() - m_dragStartCenterScene.y(), globalMousePos.x() - m_dragStartCenterScene.x()) * 180.0 / M_PI;
+        qreal angleDiff = currentAngle - m_dragStartAngle;
+        
+        // Apply shift snapping to 15 degrees if shift modifier is held
+        qreal newRotation = m_dragStartRotation + angleDiff;
+        if (event->modifiers() & Qt::ShiftModifier) {
+            newRotation = std::round(newRotation / 15.0) * 15.0;
+        }
+        m_target->setRotation(newRotation);
+
+        // Compensate positional shift to perfectly anchor rotation around the visual center
+        QPointF newCenterScene = m_target->mapToScene(m_bounds.center());
+        m_target->setPos(m_target->pos() + (m_dragStartCenterScene - newCenterScene));
         return;
     }
 
@@ -188,6 +238,7 @@ void SelectionOverlay::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     if (m_activeHandle != None) {
         m_activeHandle = None;
+        m_isRotating = false;
         setCursor(Qt::ArrowCursor);
         emit resizeFinished();
         event->accept();

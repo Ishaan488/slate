@@ -53,6 +53,26 @@ void ShapeItem::updatePath()
         path.lineTo(m_rect.left(), m_rect.bottom());
         path.closeSubpath();
     }
+    else if (m_shapeClass == Line || m_shapeClass == Arrow) {
+        path.moveTo(m_rect.topLeft());
+        path.lineTo(m_rect.bottomRight());
+
+        if (m_shapeClass == Arrow) {
+            qreal dx = m_rect.bottomRight().x() - m_rect.topLeft().x();
+            qreal dy = m_rect.bottomRight().y() - m_rect.topLeft().y();
+            qreal angle = std::atan2(dy, dx);
+            
+            qreal arrowSize = 12.0 + m_penWidth * 1.5;
+            QPointF p1 = m_rect.bottomRight() - QPointF(cos(angle - M_PI/6.0) * arrowSize, sin(angle - M_PI/6.0) * arrowSize);
+            QPointF p2 = m_rect.bottomRight() - QPointF(cos(angle + M_PI/6.0) * arrowSize, sin(angle + M_PI/6.0) * arrowSize);
+            
+            QPainterPath arrowHead;
+            arrowHead.moveTo(p1);
+            arrowHead.lineTo(m_rect.bottomRight());
+            arrowHead.lineTo(p2);
+            path.addPath(arrowHead);
+        }
+    }
 
     setPath(path);
 }

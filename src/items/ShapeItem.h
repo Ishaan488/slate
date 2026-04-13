@@ -10,7 +10,7 @@
  */
 class ShapeItem : public QGraphicsPathItem {
 public:
-    enum ShapeClass { Square, Circle, Triangle };
+    enum ShapeClass { Square, Circle, Triangle, Line, Arrow };
 
     explicit ShapeItem(ShapeClass shapeClass, const QColor& color, qreal penWidth, QGraphicsItem* parent = nullptr);
 

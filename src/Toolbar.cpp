@@ -204,9 +204,19 @@ void Toolbar::updateSubMenu()
             triBtn->setChecked(m_currentShape == Triangle);
             connect(triBtn, &QPushButton::clicked, this, [this]{ setShape(Triangle); });
 
+            auto* lineBtn = createIconButton(QChar(0x2572), "Line"); // ╲
+            lineBtn->setChecked(m_currentShape == Line);
+            connect(lineBtn, &QPushButton::clicked, this, [this]{ setShape(Line); });
+
+            auto* arrowBtn = createIconButton(QString::fromUtf8("↘"), "Arrow");
+            arrowBtn->setChecked(m_currentShape == Arrow);
+            connect(arrowBtn, &QPushButton::clicked, this, [this]{ setShape(Arrow); });
+
             m_subLayout->addWidget(sqBtn);
             m_subLayout->addWidget(circBtn);
             m_subLayout->addWidget(triBtn);
+            m_subLayout->addWidget(lineBtn);
+            m_subLayout->addWidget(arrowBtn);
             m_subLayout->addWidget(createSeparator());
         }
 

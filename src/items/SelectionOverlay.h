@@ -20,7 +20,8 @@ public:
         TopLeft, TopCenter, TopRight,
         RightCenter,
         BottomRight, BottomCenter, BottomLeft,
-        LeftCenter
+        LeftCenter,
+        RotateTopLeft, RotateTopRight, RotateBottomRight, RotateBottomLeft
     };
 
     QRectF boundingRect() const override;
@@ -48,6 +49,10 @@ private:
     QRectF m_dragStartBounds;
     qreal m_dragStartFontSize = 11.0;
     qreal m_dragStartTextWidth = -1.0;
+    qreal m_dragStartRotation = 0.0;
+    qreal m_dragStartAngle = 0.0;
+    QPointF m_dragStartCenterScene;
+    bool m_isRotating = false;
 
     qreal m_handleSize = 8.0;
 };

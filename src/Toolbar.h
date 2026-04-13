@@ -24,7 +24,9 @@ public:
     enum ShapeType {
         Square,
         Circle,
-        Triangle
+        Triangle,
+        Line,
+        Arrow
     };
 
     explicit Toolbar(QWidget* parent = nullptr);

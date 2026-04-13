@@ -203,6 +203,8 @@ protected:
                 ShapeItem::ShapeClass sClass = ShapeItem::Square;
                 if (m_toolbar->currentShape() == Toolbar::Circle) sClass = ShapeItem::Circle;
                 if (m_toolbar->currentShape() == Toolbar::Triangle) sClass = ShapeItem::Triangle;
+                if (m_toolbar->currentShape() == Toolbar::Line) sClass = ShapeItem::Line;
+                if (m_toolbar->currentShape() == Toolbar::Arrow) sClass = ShapeItem::Arrow;
 
                 m_shapeStartPos = me->scenePos();
                 m_activeShape = new ShapeItem(sClass, m_toolbar->currentColor(), m_toolbar->currentPenWidth());
