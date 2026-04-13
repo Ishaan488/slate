@@ -13,6 +13,7 @@
 #include <QTimer>
 #include <QPainter>
 #include <QScreen>
+#include <QSettings>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -137,6 +138,9 @@ public:
     {
         // Final save before exit
         saveAll();
+        
+        QSettings settings;
+        settings.setValue("SlateGeometry", saveGeometry());
     }
 
 protected:
@@ -529,7 +533,14 @@ int main(int argc, char* argv[])
     DesktopEmbedder embedder;
 
     SlateApp slate(&embedder);
-    slate.resize(900, 600);
+    
+    QSettings settings;
+    if (settings.contains("SlateGeometry")) {
+        slate.restoreGeometry(settings.value("SlateGeometry").toByteArray());
+    } else {
+        slate.resize(900, 600);
+    }
+    
     slate.show();
 
     // Apply widget behavior: hide from taskbar + start anti-minimize timer
